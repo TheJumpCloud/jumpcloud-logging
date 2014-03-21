@@ -5,13 +5,17 @@ import(
 )
 
 func TestLevel(t *testing.T){
-	log := NewLogger(FATAL)
+	log := NewLogger(CRITICAL)
 
-	log.Fatal("this is some text")
+	if log.level != CRITICAL{
+		t.Error("Level not set for logger")
+	}
 }
-
 func TestPanic(t *testing.T) {
-	log := NewLogger(FATAL)
+	log := NewLogger(CRITICAL)
+
+	log.Error("Shouldn't see this")
+
 	defer func(){
 		if r := recover(); r != nil {
 
@@ -24,7 +28,7 @@ func TestPanic(t *testing.T) {
 }
 
 func TestStdLog(t *testing.T) {
-	Fatal("Fatal non-fatal message")
+	Critical("Fatal non-fatal message")
 	Level(DEBUG)
 
 	defer func(){

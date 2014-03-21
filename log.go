@@ -1,7 +1,7 @@
 package log
 
 import (
-	"github.com/jcelliott/lumber"
+	internal_logger "log"
 )
 
 //This is a wrapper only we can switch out loggers at will. The golang logger ecosphere is still volatile
@@ -12,99 +12,104 @@ const (
 	INFO
 	WARN
 	ERROR
-	FATAL
+	CRITICAL
 )
 
 type Logger interface {
-	Fatal(string)
-	Error(string)
-	Warn(string)
-	Info(string)
-	Debug(string)
-	Trace(string)
+	Critical(interface{})
+	Error(interface{})
+	Warn(interface{})
+	Info(interface{})
+	Debug(interface{})
+	Trace(interface{})
 
 	Level(int)
 }
 
 type Log struct{
-	internal_logger lumber.Logger	
+	level int
 }
 
 
-func NewLogger(o int) *Log {
-	return &Log{internal_logger:lumber.NewConsoleLogger(o)}
+func NewLogger(level int) *Log {
+	return &Log{level:level}
 }
 
-var std = NewLogger(FATAL)
+var std = NewLogger(INFO)
 
-func (log *Log) Panic(message string){
-	log.internal_logger.Fatal(message)
+func (log *Log) Panic(message interface{}){
+	internal_logger.Println(message)
 	panic(message)
 }
 
-func Panic(message string){
+func Panic(message interface{}){
 	std.Panic(message)
 }
 
-func (log *Log) Fatal(message string){
-	log.internal_logger.Fatal(message)
+func (log *Log) Critical(message interface{}){
+	internal_logger.Println(message)
 }
 
-func Fatal(message string){
-	std.Fatal(message)
+func Critical(message interface{}){
+	std.Critical(message)
 }
 
-func (log *Log) Error(message string){
-	log.internal_logger.Error(message)
+func (log *Log) Error(message interface{}){
+	if log.level >= ERROR{
+		internal_logger.Println(message)
+	}
 }
 
-func Error(message string){
+func Error(message interface{}){
 	std.Error(message)
 }
 
-func (log *Log) Warn(message string){
-	log.internal_logger.Warn(message)
+func (log *Log) Warn(message interface{}){
+	if log.level >= WARN{
+		internal_logger.Println(message)
+	}
 }
 
-func Warn(message string){
+func Warn(message interface{}){
 	std.Warn(message)
 }
 
-func (log *Log) Info(message string){
-	log.internal_logger.Info(message)
+func (log *Log) Info(message interface{}){
+	internal_logger.Println(message)
 }
 
-func Info(message string){
+func Info(message interface{}){
 	std.Info(message)
 }
 
-func (log *Log) Debug(message string){
-	log.internal_logger.Debug(message)
+func (log *Log) Debug(message interface{}){
+	internal_logger.Println(message)
 }
 
-func Debug(message string){
+func Debug(message interface{}){
 	std.Debug(message)
 }
 
-func (log *Log) Trace(message string){
-	log.internal_logger.Trace(message)
+func (log *Log) Trace(message interface{}){
+	internal_logger.Println(message)
 }
 
-func Trace(message string){
+func Trace(message interface{}){
 	std.Trace(message)
 }
 
-func (log *Log) Println(message string){
-	log.internal_logger.Info(message)
+func (log *Log) Println(message interface{}){
+	internal_logger.Println(message)
 }
 
-func Println(message string){
+func Println(message interface{}){
 	std.Println(message)
 }
-func (log *Log) Level(o int) {
-	log.internal_logger.Level(o)
+
+func (log *Log) Level(level int) {
+	log.level = level
 }
 
-func Level(o int) {
-	std.Level(o)
+func Level(level int) {
+	std.Level(level)
 }
