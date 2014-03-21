@@ -94,6 +94,13 @@ func Trace(message string){
 	std.Trace(message)
 }
 
+func (log *Log) Println(message string){
+	log.internal_logger.Info(message)
+}
+
+func Println(message string){
+	std.Println(message)
+}
 func (log *Log) Level(o int) {
 	log.internal_logger.Level(o)
 }
