@@ -1,13 +1,13 @@
 package log
 
-import( 
+import (
 	"testing"
 )
 
-func TestLevel(t *testing.T){
+func TestLevel(t *testing.T) {
 	log := NewLogger(CRITICAL)
 
-	if log.level != CRITICAL{
+	if log.level != CRITICAL {
 		t.Error("Level not set for logger")
 	}
 }
@@ -16,10 +16,10 @@ func TestPanic(t *testing.T) {
 
 	log.Error("Shouldn't see this")
 
-	defer func(){
+	defer func() {
 		if r := recover(); r != nil {
 
-		}else{
+		} else {
 			t.Error("Expected a panic")
 		}
 	}()
@@ -31,10 +31,10 @@ func TestStdLog(t *testing.T) {
 	Critical("Fatal non-fatal message")
 	Level(DEBUG)
 
-	defer func(){
+	defer func() {
 		if r := recover(); r != nil {
 
-		}else{
+		} else {
 			t.Error("Expected a panic")
 		}
 	}()

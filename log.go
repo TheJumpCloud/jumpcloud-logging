@@ -26,89 +26,88 @@ type Logger interface {
 	Level(int)
 }
 
-type Log struct{
+type Log struct {
 	level int
 }
 
-
 func NewLogger(level int) *Log {
-	return &Log{level:level}
+	return &Log{level: level}
 }
 
 var std = NewLogger(INFO)
 
-func (log *Log) Panic(message interface{}){
+func (log *Log) Panic(message interface{}) {
 	log.Println(message)
 	panic(message)
 }
 
-func Panic(message interface{}){
+func Panic(message interface{}) {
 	std.Panic(message)
 }
 
-func (log *Log) Critical(message interface{}){
+func (log *Log) Critical(message interface{}) {
 	log.Println(message)
 }
 
-func Critical(message interface{}){
+func Critical(message interface{}) {
 	std.Critical(message)
 }
 
-func (log *Log) Error(message interface{}){
-	if log.level < ERROR{
+func (log *Log) Error(message interface{}) {
+	if log.level < ERROR {
 		log.Println(message)
 	}
 }
 
-func Error(message interface{}){
+func Error(message interface{}) {
 	std.Error(message)
 }
 
-func (log *Log) Warn(message interface{}){
-	if log.level < WARN{
+func (log *Log) Warn(message interface{}) {
+	if log.level < WARN {
 		log.Println(message)
 	}
 }
 
-func Warn(message interface{}){
+func Warn(message interface{}) {
 	std.Warn(message)
 }
 
-func (log *Log) Info(message interface{}){
-	if log.level < INFO{
+func (log *Log) Info(message interface{}) {
+	if log.level < INFO {
 		log.Println(message)
 	}
 }
 
-func Info(message interface{}){
+func Info(message interface{}) {
 	std.Info(message)
 }
 
-func (log *Log) Debug(message interface{}){
-	if log.level < DEBUG{
+func (log *Log) Debug(message interface{}) {
+	if log.level < DEBUG {
 		log.Println(message)
 	}
 }
 
-func Debug(message interface{}){
+func Debug(message interface{}) {
 	std.Debug(message)
 }
 
-func (log *Log) Trace(message interface{}){
-	if log.level < TRACE{
+func (log *Log) Trace(message interface{}) {
+	if log.level < TRACE {
 		log.Println(message)
 	}
 }
 
-func Trace(message interface{}){
+func Trace(message interface{}) {
 	std.Trace(message)
 }
 
-func (log *Log) Println(message interface{}){
+func (log *Log) Println(message interface{}) {
 	internal_logger.Println(message)
 }
 
-func Println(message interface{}){
+func Println(message interface{}) {
 	std.Println(message)
 }
 
