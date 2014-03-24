@@ -54,7 +54,7 @@ func Critical(message ...interface{}) {
 }
 
 func (log *Log) Error(message ...interface{}) {
-	if log.level < ERROR {
+	if log.level <= ERROR {
 		log.Println(message)
 	}
 }
@@ -64,7 +64,7 @@ func Error(message ...interface{}) {
 }
 
 func (log *Log) Warn(message ...interface{}) {
-	if log.level < WARN {
+	if log.level <= WARN {
 		log.Println(message)
 	}
 }
@@ -74,7 +74,7 @@ func Warn(message ...interface{}) {
 }
 
 func (log *Log) Info(message ...interface{}) {
-	if log.level < INFO {
+	if log.level <= INFO {
 		log.Println(message)
 	}
 }
@@ -84,7 +84,7 @@ func Info(message ...interface{}) {
 }
 
 func (log *Log) Debug(message ...interface{}) {
-	if log.level < DEBUG {
+	if log.level <= DEBUG {
 		log.Println(message)
 	}
 }
@@ -94,7 +94,7 @@ func Debug(message ...interface{}) {
 }
 
 func (log *Log) Trace(message ...interface{}) {
-	if log.level < TRACE {
+	if log.level <= TRACE {
 		log.Println(message)
 	}
 }
