@@ -1,7 +1,9 @@
 package log
 
 import (
+	"io"
 	internal_logger "log"
+	"os"
 )
 
 //This is a wrapper only we can switch out loggers at will. The golang logger ecosphere is still volatile
@@ -22,6 +24,7 @@ type Logger interface {
 	Info(interface{})
 	Debug(interface{})
 	Trace(interface{})
+	SetOutput(string)
 
 	Level(int)
 }
@@ -117,4 +120,19 @@ func (log *Log) Level(level int) {
 
 func Level(level int) {
 	std.Level(level)
+}
+
+func (log *Log) SetOutput(writer io.Writer) {
+	internal_logger.SetOutput(writer)
+}
+
+func SetOutput(path string) error {
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		Panic("Unable to open log file: " + err.Error())
+	}
+
+	std.SetOutput(file)
+
+	return err
 }
