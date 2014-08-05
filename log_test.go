@@ -1,6 +1,9 @@
 package log
 
 import (
+	"io/ioutil"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -39,4 +42,26 @@ func TestStdLog(t *testing.T) {
 		}
 	}()
 	Panic("Panic message")
+}
+
+func TestSetOutput(t *testing.T) {
+	os.MkdirAll("tmp", 0777)
+	path := "./tmp/nonexistantfile.txt"
+	err := SetOutput(path)
+
+	if err != nil {
+		t.Error("There was an error setting output: " + err.Error())
+	}
+
+	logMsg := "This message should appear in the logs"
+	Info(logMsg)
+
+	logFile, _ := ioutil.ReadFile(path)
+	logContents := string(logFile)
+
+	if !strings.Contains(logContents, logMsg) {
+		t.Error("Log didn't contain what we expected: " + logContents)
+	}
+
+	os.RemoveAll("tmp")
 }
