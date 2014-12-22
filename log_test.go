@@ -63,5 +63,56 @@ func TestSetOutput(t *testing.T) {
 		t.Error("Log didn't contain what we expected: " + logContents)
 	}
 
+	// Close the output file so we can remove the temp dir
+	CloseOutput()
+
+	os.RemoveAll("tmp")
+}
+
+const (
+	TEST_LOG_SIZE = 10000
+)
+
+func TestRotation(t *testing.T) {
+	os.MkdirAll("tmp", 0777)
+	path := "./tmp/nonexistentfile.txt"
+	err := SetOutput(path)
+
+	if err != nil {
+		t.Error("There was an error setting output: " + err.Error())
+	}
+
+	SetMaxLogSize(TEST_LOG_SIZE)
+
+	for i := 0; i < 250; i++ {
+		Info("01234567890123456789012345678901234567890123456789")
+	}
+
+	//
+	// Rotate the log file if it grows too large
+	//
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Could not stat log file '%s', err='%s'", path, err)
+	}
+
+	if fileInfo.Size() > TEST_LOG_SIZE {
+		t.Fatalf("Log file is %d bytes, larger than %d after rotation.", fileInfo.Size(), TEST_LOG_SIZE)
+	}
+
+	rotatedFile := path + ".prev"
+
+	fileInfo, err = os.Stat(rotatedFile)
+	if err != nil {
+		t.Fatalf("Could not stat rotated log file '%s', err='%s'", rotatedFile, err)
+	}
+
+	if fileInfo.Size() > TEST_LOG_SIZE+100 {
+		t.Fatalf("Rotated log file is bigger than expected (%d bytes), should be no more than %d", fileInfo.Size(), TEST_LOG_SIZE+100)
+	}
+
+	// Close the output file so we can remove the temp dir
+	CloseOutput()
+
 	os.RemoveAll("tmp")
 }
