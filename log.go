@@ -207,7 +207,6 @@ func rotateLog() {
 			fmt.Printf("ERROR: Could not rename log file for rotation, attempting to remove log file instead. err='%s'\n", err.Error())
 
 			os.Remove(std.logFileName)
-			return
 		}
 
 		// Re-open the file...
