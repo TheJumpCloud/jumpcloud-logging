@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fmt"
 	"io"
 	internal_logger "log"
 	"os"
@@ -153,10 +154,11 @@ func (log *Log) SetOutput(writer io.Writer) {
 	internal_logger.SetOutput(writer)
 }
 
-func SetOutput(path string) error {
+func SetOutput(path string) (err error) {
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
-		Panic("Unable to open log file: " + err.Error())
+		err = fmt.Errorf("Unable to open log file - err='%s'", err.Error())
+		return
 	}
 
 	std.logFileName = path
@@ -164,7 +166,7 @@ func SetOutput(path string) error {
 
 	std.SetOutput(file)
 
-	return err
+	return
 }
 
 func CloseOutput() (err error) {
@@ -175,22 +177,23 @@ func CloseOutput() (err error) {
 
 func rotateLog() {
 
-	//
 	// No need to rotate a log file that doesn't exist...
-	//
 	if std.logFileName == "" {
 		return
 	}
 
-	//
-	// Rotate the log file if it grows too large
-	//
 	fileInfo, err := os.Stat(std.logFileName)
 	if err != nil {
-		Panic("ERROR: Could not stat log file '" + std.logFileName + "', err=" + err.Error())
+		fmt.Printf("ERROR: Could not stat log file '%s' - err='%s'\n", std.logFileName, err.Error())
+
+		// Attempt recovery to prevent filling the filesystem...
+		CloseOutput()
+		os.Remove(std.logFileName)
+		SetOutput(std.logFileName)
 		return
 	}
 
+	// Rotate the log file if it grows too large
 	if fileInfo.Size() > std.maxLogSize {
 
 		// Close the current file so we can rename it...
@@ -201,10 +204,13 @@ func rotateLog() {
 
 		err := os.Rename(std.logFileName, std.logFileName+".prev")
 		if err != nil {
-			Panic("ERROR: Could not rename log file for rotation! err=" + err.Error())
+			fmt.Printf("ERROR: Could not rename log file for rotation, attempting to remove log file instead. err='%s'\n", err.Error())
+
+			os.Remove(std.logFileName)
 			return
 		}
 
+		// Re-open the file...
 		SetOutput(std.logFileName)
 	}
 }
