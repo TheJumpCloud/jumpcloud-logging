@@ -5,6 +5,7 @@ import (
 	"io"
 	internal_logger "log"
 	"os"
+	"sync"
 )
 
 //This is a wrapper only we can switch out loggers at will. The golang logger ecosphere is still volatile
@@ -39,6 +40,7 @@ type Log struct {
 	maxLogSize  int64
 	logFileName string
 	logWriter   *os.File
+	mu          sync.RWMutex
 }
 
 func NewLogger(level int) *Log {
@@ -52,6 +54,9 @@ func NewLogger(level int) *Log {
 var std = NewLogger(INFO)
 
 func (log *Log) SetMaxLogSize(logSize int64) {
+	log.mu.Lock()
+	defer log.mu.Unlock()
+
 	log.maxLogSize = logSize
 }
 
@@ -60,89 +65,100 @@ func SetMaxLogSize(logSize int64) {
 }
 
 func (log *Log) Panic(message ...interface{}) {
+	log.rotateLog()
+
 	log.Println(message)
 	panic(message)
 }
 
 func Panic(message ...interface{}) {
-	rotateLog()
 	std.Panic(message)
 }
 
 func (log *Log) Critical(message ...interface{}) {
+	log.rotateLog()
+
 	log.Println(message)
 }
 
 func Critical(message ...interface{}) {
-	rotateLog()
 	std.Critical(message)
 }
 
 func (log *Log) Error(message ...interface{}) {
-	if log.level <= ERROR {
+	log.rotateLog()
+
+	if log.getLevel() <= ERROR {
 		log.Println(message)
 	}
 }
 
 func Error(message ...interface{}) {
-	rotateLog()
 	std.Error(message)
 }
 
 func (log *Log) Warn(message ...interface{}) {
-	if log.level <= WARN {
+	log.rotateLog()
+
+	if log.getLevel() <= WARN {
 		log.Println(message)
 	}
 }
 
 func Warn(message ...interface{}) {
-	rotateLog()
 	std.Warn(message)
 }
 
 func (log *Log) Info(message ...interface{}) {
-	if log.level <= INFO {
+	log.rotateLog()
+
+	if log.getLevel() <= INFO {
 		log.Println(message)
 	}
 }
 
 func Info(message ...interface{}) {
-	rotateLog()
 	std.Info(message)
 }
 
 func (log *Log) Debug(message ...interface{}) {
-	if log.level <= DEBUG {
+	log.rotateLog()
+
+	if log.getLevel() <= DEBUG {
 		log.Println(message)
 	}
 }
 
 func Debug(message ...interface{}) {
-	rotateLog()
 	std.Debug(message)
 }
 
 func (log *Log) Trace(message ...interface{}) {
-	if log.level <= TRACE {
+	log.rotateLog()
+
+	if log.getLevel() <= TRACE {
 		log.Println(message)
 	}
 }
 
 func Trace(message ...interface{}) {
-	rotateLog()
 	std.Trace(message)
 }
 
 func (log *Log) Println(message ...interface{}) {
+	log.rotateLog()
+
 	internal_logger.Println(message)
 }
 
 func Println(message ...interface{}) {
-	rotateLog()
 	std.Println(message)
 }
 
 func (log *Log) Level(level int) {
+	log.mu.Lock()
+	defer log.mu.Unlock()
+
 	log.level = level
 }
 
@@ -150,66 +166,106 @@ func Level(level int) {
 	std.Level(level)
 }
 
-func (log *Log) SetOutput(writer io.Writer) {
-	internal_logger.SetOutput(writer)
+// thread-safe, use for accessing level in exported methods
+func (log *Log) getLevel() int {
+	log.mu.RLock()
+	defer log.mu.RUnlock()
+
+	return log.level
 }
 
-func SetOutput(path string) (err error) {
+func (log *Log) SetOutput(path string) (err error) {
+	log.mu.Lock()
+	defer log.mu.Unlock()
+
+	return log.setOutput(path)
+}
+
+// Not thread-safe
+func (log *Log) setOutput(path string) (err error) {
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		err = fmt.Errorf("Unable to open log file - err='%s'", err.Error())
 		return
 	}
 
-	std.logFileName = path
-	std.logWriter = file
-
-	std.SetOutput(file)
-
+	log.logFileName = path
+	log.logWriter = file
+	internal_logger.SetOutput(file)
 	return
+}
+
+func SetOutput(path string) (err error) {
+	return std.SetOutput(path)
+}
+
+func (log *Log) CloseOutput() (err error) {
+	log.mu.Lock()
+	defer log.mu.Unlock()
+
+	return log.closeOutput()
+}
+
+// Not thread-safe
+func (log *Log) closeOutput() (err error) {
+	return log.logWriter.Close()
 }
 
 func CloseOutput() (err error) {
-	err = std.logWriter.Close()
-
-	return
+	return std.CloseOutput()
 }
 
-func rotateLog() {
-
+func (log *Log) rotateLog() {
 	// No need to rotate a log file that doesn't exist...
-	if std.logFileName == "" {
+	if log.logFileName == "" {
 		return
 	}
 
-	fileInfo, err := os.Stat(std.logFileName)
+	// Acquire mutex to rotate
+	log.mu.Lock()
+	defer log.mu.Unlock()
+
+	fileInfo, err := os.Stat(log.logFileName)
 	if err != nil {
-		fmt.Printf("ERROR: Could not stat log file '%s' - err='%s'\n", std.logFileName, err.Error())
+		fmt.Printf("ERROR: Could not stat log file '%s' - err='%s'\n", log.logFileName, err.Error())
 
 		// Attempt recovery to prevent filling the filesystem...
-		CloseOutput()
-		os.Remove(std.logFileName)
-		SetOutput(std.logFileName)
+		log.closeOutput()
+		os.Remove(log.logFileName)
+		log.setOutput(log.logFileName)
 		return
 	}
 
 	// Rotate the log file if it grows too large
-	if fileInfo.Size() > std.maxLogSize {
+	if fileInfo.Size() > log.maxLogSize {
+		// Close our current file
+		log.logWriter.Close()
 
-		// Close the current file so we can rename it...
-		CloseOutput()
+		// Delete any existing rotated file
+		rotateName := log.logFileName + ".prev"
+		os.Remove(rotateName)
 
-		// If the prev file already exists, just blast it...
-		os.Remove(std.logFileName + ".prev")
-
-		err := os.Rename(std.logFileName, std.logFileName+".prev")
+		// Copy the existing file over so we can truncate in place
+		dst, err := os.OpenFile(rotateName, os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
-			fmt.Printf("ERROR: Could not rename log file for rotation, attempting to remove log file instead. err='%s'\n", err.Error())
-
-			os.Remove(std.logFileName)
+			fmt.Printf("ERROR: Could not open target file for rotation. err='%s'\n", err.Error())
+		} else {
+			src, err := os.OpenFile(log.logFileName, os.O_RDONLY, 0600)
+			if err != nil {
+				fmt.Printf("ERROR: Could not open source file for rotation. err='%s'\n", err.Error())
+			} else {
+				io.Copy(dst, src)
+			}
 		}
 
-		// Re-open the file...
-		SetOutput(std.logFileName)
+		// Re-open the target file with truncation
+		file, err := os.OpenFile(log.logFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+		if err == nil {
+			log.logWriter = file
+			internal_logger.SetOutput(file)
+			//fmt.Println("Rotated log successfully!")
+		} else {
+			fmt.Printf("ERROR: Unable to open log file with truncation for rotation. err='%s'\n", err.Error())
+		}
 	}
 }

@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -85,7 +86,7 @@ func TestRotation(t *testing.T) {
 	SetMaxLogSize(TEST_LOG_SIZE)
 
 	for i := 0; i < 250; i++ {
-		Info("01234567890123456789012345678901234567890123456789")
+		Info(fmt.Sprintf("%03d-01234567890123456789012345678901234567890123456789", i))
 	}
 
 	//
