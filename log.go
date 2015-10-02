@@ -2,6 +2,7 @@ package log
 
 import (
 	"fmt"
+	"io"
 	internal_logger "log"
 	"os"
 	"sync"
@@ -249,20 +250,34 @@ func (log *Log) rotateLog() {
 
 	// Rotate the log file if it grows too large
 	if fileInfo.Size() > log.maxLogSize {
-		// Close the current file so we can rename it...
+		// Close our current file
 		log.logWriter.Close()
 
-		// If the prev file already exists, just blast it...
-		os.Remove(log.logFileName + ".prev")
+		// Delete any existing rotated file
+		rotateName := log.logFileName + ".prev"
+		os.Remove(rotateName)
 
-		err := os.Rename(log.logFileName, log.logFileName+".prev")
+		// Copy the existing file over so we can truncate in place
+		dst, err := os.OpenFile(rotateName, os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
-			fmt.Printf("ERROR: Could not rename log file for rotation, attempting to remove log file instead. err='%s'\n", err.Error())
-
-			os.Remove(log.logFileName)
+			fmt.Printf("ERROR: Could not open target file for rotation. err='%s'\n", err.Error())
+		} else {
+			src, err := os.OpenFile(log.logFileName, os.O_RDONLY, 0600)
+			if err != nil {
+				fmt.Printf("ERROR: Could not open source file for rotation. err='%s'\n", err.Error())
+			} else {
+				io.Copy(dst, src)
+			}
 		}
 
-		// Re-open the file...
-		log.setOutput(log.logFileName)
+		// Re-open the target file with truncation
+		file, err := os.OpenFile(log.logFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+		if err == nil {
+			log.logWriter = file
+			internal_logger.SetOutput(file)
+			fmt.Println("Rotated log successfully!")
+		} else {
+			fmt.Printf("ERROR: Unable to open log file with truncation for rotation. err='%s'\n", err.Error())
+		}
 	}
 }
