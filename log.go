@@ -88,11 +88,7 @@ func Critical(message ...interface{}) {
 func (log *Log) Error(message ...interface{}) {
 	log.rotateLog()
 
-	log.mu.RLock()
-	level := log.level
-	log.mu.RUnlock()
-
-	if level <= ERROR {
+	if log.getLevel() <= ERROR {
 		log.Println(message)
 	}
 }
@@ -104,11 +100,7 @@ func Error(message ...interface{}) {
 func (log *Log) Warn(message ...interface{}) {
 	log.rotateLog()
 
-	log.mu.RLock()
-	level := log.level
-	log.mu.RUnlock()
-
-	if level <= WARN {
+	if log.getLevel() <= WARN {
 		log.Println(message)
 	}
 }
@@ -120,11 +112,7 @@ func Warn(message ...interface{}) {
 func (log *Log) Info(message ...interface{}) {
 	log.rotateLog()
 
-	log.mu.RLock()
-	level := log.level
-	log.mu.RUnlock()
-
-	if level <= INFO {
+	if log.getLevel() <= INFO {
 		log.Println(message)
 	}
 }
@@ -136,11 +124,7 @@ func Info(message ...interface{}) {
 func (log *Log) Debug(message ...interface{}) {
 	log.rotateLog()
 
-	log.mu.RLock()
-	level := log.level
-	log.mu.RUnlock()
-
-	if level <= DEBUG {
+	if log.getLevel() <= DEBUG {
 		log.Println(message)
 	}
 }
@@ -152,11 +136,7 @@ func Debug(message ...interface{}) {
 func (log *Log) Trace(message ...interface{}) {
 	log.rotateLog()
 
-	log.mu.RLock()
-	level := log.level
-	log.mu.RUnlock()
-
-	if level <= TRACE {
+	if log.getLevel() <= TRACE {
 		log.Println(message)
 	}
 }
@@ -184,6 +164,14 @@ func (log *Log) Level(level int) {
 
 func Level(level int) {
 	std.Level(level)
+}
+
+// thread-safe, use for accessing level in exported methods
+func (log *Log) getLevel() int {
+	log.mu.RLock()
+	defer log.mu.RUnlock()
+
+	return log.level
 }
 
 func (log *Log) SetOutput(path string) (err error) {
@@ -275,7 +263,7 @@ func (log *Log) rotateLog() {
 		if err == nil {
 			log.logWriter = file
 			internal_logger.SetOutput(file)
-			fmt.Println("Rotated log successfully!")
+			//fmt.Println("Rotated log successfully!")
 		} else {
 			fmt.Printf("ERROR: Unable to open log file with truncation for rotation. err='%s'\n", err.Error())
 		}
