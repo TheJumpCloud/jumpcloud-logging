@@ -26,7 +26,6 @@ const (
 type Logger interface {
 	Critical(interface{})
 	Error(interface{})
-	Errorf(fmt string, args ...interface{})
 	Warn(interface{})
 	Info(interface{})
 	Debug(interface{})
