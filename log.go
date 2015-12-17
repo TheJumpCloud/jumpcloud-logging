@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 	"runtime"
-	"strconv"
 	"sync"
 )
 
@@ -150,7 +149,7 @@ func Trace(message ...interface{}) {
 }
 
 func (log *Log) Println(message ...interface{}) {
-	pidStr := "[" + strconv.Itoa(os.Getpid()) + "]"
+	pidStr := fmt.Sprintf("[%d]", os.Getpid())
 
 	if firstArg, isStr := message[0].(string); isStr {
 		// Passing the empty slice for the arguments works here, so no need to check len(message)
