@@ -5,6 +5,9 @@ import (
 	"io"
 	internal_logger "log"
 	"os"
+	"path"
+	"runtime"
+	"strconv"
 )
 
 //This is a wrapper only we can switch out loggers at will. The golang logger ecosphere is still volatile
@@ -25,6 +28,7 @@ const (
 type Logger interface {
 	Critical(interface{})
 	Error(interface{})
+	Errorf(fmt string, args ...interface{})
 	Warn(interface{})
 	Info(interface{})
 	Debug(interface{})
@@ -60,86 +64,101 @@ func SetMaxLogSize(logSize int64) {
 }
 
 func (log *Log) Panic(message ...interface{}) {
-	log.Println(message)
+	log.Println(message...)
 	panic(message)
 }
 
 func Panic(message ...interface{}) {
 	rotateLog()
-	std.Panic(message)
+	std.Panic(message...)
 }
 
 func (log *Log) Critical(message ...interface{}) {
-	log.Println(message)
+	log.Println(message...)
 }
 
 func Critical(message ...interface{}) {
 	rotateLog()
-	std.Critical(message)
+	std.Critical(message...)
 }
 
 func (log *Log) Error(message ...interface{}) {
 	if log.level <= ERROR {
-		log.Println(message)
+		log.Println(message...)
 	}
 }
 
 func Error(message ...interface{}) {
 	rotateLog()
-	std.Error(message)
+	std.Error(message...)
 }
 
 func (log *Log) Warn(message ...interface{}) {
 	if log.level <= WARN {
-		log.Println(message)
+		log.Println(message...)
 	}
 }
 
 func Warn(message ...interface{}) {
 	rotateLog()
-	std.Warn(message)
+	std.Warn(message...)
 }
 
 func (log *Log) Info(message ...interface{}) {
 	if log.level <= INFO {
-		log.Println(message)
+		log.Println(message...)
 	}
 }
 
 func Info(message ...interface{}) {
 	rotateLog()
-	std.Info(message)
+	std.Info(message...)
 }
 
 func (log *Log) Debug(message ...interface{}) {
 	if log.level <= DEBUG {
-		log.Println(message)
+		log.Println(message...)
 	}
 }
 
 func Debug(message ...interface{}) {
 	rotateLog()
-	std.Debug(message)
+	std.Debug(message...)
 }
 
 func (log *Log) Trace(message ...interface{}) {
 	if log.level <= TRACE {
-		log.Println(message)
+		log.Println(message...)
 	}
 }
 
 func Trace(message ...interface{}) {
 	rotateLog()
-	std.Trace(message)
+	std.Trace(message...)
 }
 
 func (log *Log) Println(message ...interface{}) {
-	internal_logger.Println(message)
+	pidStr := "[" + strconv.Itoa(os.Getpid()) + "]"
+
+	if firstArg, isStr := message[0].(string); isStr {
+		// Passing the empty slice for the arguments works here, so no need to check len(message)
+		internal_logger.Printf(pidStr+" "+firstArg, message[1:]...)
+	} else {
+		// Look up the stack until we get out of the logging package...
+		pc, _, _, ok := runtime.Caller(3)
+		if ok {
+			// Get the calling file's name...
+			fileName, line := runtime.FuncForPC(pc).FileLine(pc)
+			fileName = path.Base(fileName)
+
+			internal_logger.Printf(pidStr+" Unsupported argument type in first log argument, called from the line above %s:%d", fileName, line)
+		}
+	}
 }
 
 func Println(message ...interface{}) {
 	rotateLog()
-	std.Println(message)
+	std.Println(message...)
 }
 
 func (log *Log) Level(level int) {

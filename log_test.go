@@ -14,6 +14,7 @@ func TestLevel(t *testing.T) {
 		t.Error("Level not set for logger")
 	}
 }
+
 func TestPanic(t *testing.T) {
 	log := NewLogger(CRITICAL)
 
@@ -67,6 +68,44 @@ func TestSetOutput(t *testing.T) {
 	CloseOutput()
 
 	os.RemoveAll("tmp")
+}
+
+func TestErrorWithPrintf(t *testing.T) {
+	const (
+		testStr  = "test-string"
+		testStr2 = "another test string"
+	)
+
+	os.MkdirAll("tmp", 0777)
+	path := "./tmp/nonexistentfile.txt"
+	err := SetOutput(path)
+	defer func() {
+		CloseOutput()
+		os.Remove(path)
+	}()
+
+	Error("my output should contain '%s'", testStr)
+	Error(testStr2)
+	Error(50)
+
+	myData, err := ioutil.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Could not read log file '%s' for test, err='%s'", path, err)
+	}
+
+	data := string(myData)
+
+	if strings.Index(data, testStr) == -1 {
+		t.Fatalf("Could not find the expected test constant in the log file, log contained '%s'", string(myData))
+	}
+
+	if strings.Index(data, testStr2) == -1 {
+		t.Fatalf("Could not find the expected test constant in the log file, log contained '%s'", string(myData))
+	}
+
+	if strings.Index(data, "Unsupported argument type") == -1 {
+		t.Fatalf("Could not find output for incorrect arg type in the log file, log contained '%s'", string(myData))
+	}
 }
 
 const (
