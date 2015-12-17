@@ -75,6 +75,8 @@ func TestErrorWithPrintf(t *testing.T) {
 	const (
 		testStr  = "test-string"
 		testStr2 = "another test string"
+		testStr3 = "test789"
+		testStr4 = "test233"
 	)
 
 	os.MkdirAll("tmp", 0777)
@@ -88,6 +90,7 @@ func TestErrorWithPrintf(t *testing.T) {
 	Error("my output should contain '%s'", testStr)
 	Error(testStr2)
 	Error(50)
+	Error("another", testStr3, testStr4)
 
 	myData, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -96,16 +99,22 @@ func TestErrorWithPrintf(t *testing.T) {
 
 	data := string(myData)
 
+	t.Logf("data='%s'", data)
+
 	if strings.Index(data, testStr) == -1 {
-		t.Fatalf("Could not find the expected test constant in the log file, log contained '%s'", string(myData))
+		t.Fatalf("Could not find the expected test constant '%s' in the log file, log contained '%s'", testStr, string(myData))
 	}
 
 	if strings.Index(data, testStr2) == -1 {
-		t.Fatalf("Could not find the expected test constant in the log file, log contained '%s'", string(myData))
+		t.Fatalf("Could not find the expected test constant '%s' in the log file, log contained '%s'", testStr2, string(myData))
 	}
 
 	if strings.Index(data, "Unsupported argument type") == -1 {
 		t.Fatalf("Could not find output for incorrect arg type in the log file, log contained '%s'", string(myData))
+	}
+
+	if strings.Index(data, testStr4) == -1 {
+		t.Fatalf("Could not find output for lists of strings '%s', log contained '%s'", testStr4, string(myData))
 	}
 }
 
