@@ -89,7 +89,6 @@ func TestErrorWithPrintf(t *testing.T) {
 
 	Error("my output should contain '%s'", testStr)
 	Error(testStr2)
-	Error(50)
 	Error("another", testStr3, testStr4)
 
 	myData, err := ioutil.ReadFile(path)
@@ -107,10 +106,6 @@ func TestErrorWithPrintf(t *testing.T) {
 
 	if strings.Index(data, testStr2) == -1 {
 		t.Fatalf("Could not find the expected test constant '%s' in the log file, log contained '%s'", testStr2, string(myData))
-	}
-
-	if strings.Index(data, "Unsupported argument type") == -1 {
-		t.Fatalf("Could not find output for incorrect arg type in the log file, log contained '%s'", string(myData))
 	}
 
 	if strings.Index(data, testStr4) == -1 {

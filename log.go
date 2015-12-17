@@ -5,8 +5,6 @@ import (
 	"io"
 	internal_logger "log"
 	"os"
-	"path"
-	"runtime"
 	"sync"
 )
 
@@ -67,108 +65,95 @@ func SetMaxLogSize(logSize int64) {
 	std.maxLogSize = logSize
 }
 
-func (log *Log) Panic(message ...interface{}) {
+func (log *Log) Panic(format string, message ...interface{}) {
 	log.rotateLog()
-	log.Println(message...)
+	log.Println(format, message...)
 
-	panic(message)
+	panic(fmt.Sprintf(format, message...))
 }
 
-func Panic(message ...interface{}) {
-	std.Panic(message...)
+func Panic(format string, message ...interface{}) {
+	std.Panic(format, message...)
 }
 
-func (log *Log) Critical(message ...interface{}) {
+func (log *Log) Critical(format string, message ...interface{}) {
 	log.rotateLog()
 
-	log.Println(message...)
+	log.Println(format, message...)
 }
 
-func Critical(message ...interface{}) {
-	std.Critical(message...)
+func Critical(format string, message ...interface{}) {
+	std.Critical(format, message...)
 }
 
-func (log *Log) Error(message ...interface{}) {
+func (log *Log) Error(format string, message ...interface{}) {
 	log.rotateLog()
 
 	if log.level <= ERROR {
-		log.Println(message...)
+		log.Println(format, message...)
 	}
 }
 
-func Error(message ...interface{}) {
-	std.Error(message...)
+func Error(format string, message ...interface{}) {
+	std.Error(format, message...)
 }
 
-func (log *Log) Warn(message ...interface{}) {
+func (log *Log) Warn(format string, message ...interface{}) {
 	log.rotateLog()
 
 	if log.level <= WARN {
-		log.Println(message...)
+		log.Println(format, message...)
 	}
 }
 
-func Warn(message ...interface{}) {
-	std.Warn(message...)
+func Warn(format string, message ...interface{}) {
+	std.Warn(format, message...)
 }
 
-func (log *Log) Info(message ...interface{}) {
+func (log *Log) Info(format string, message ...interface{}) {
 	log.rotateLog()
 
 	if log.getLevel() <= INFO {
-		log.Println(message...)
+		log.Println(format, message...)
 	}
 }
 
-func Info(message ...interface{}) {
-	std.Info(message...)
+func Info(format string, message ...interface{}) {
+	std.Info(format, message...)
 }
 
-func (log *Log) Debug(message ...interface{}) {
+func (log *Log) Debug(format string, message ...interface{}) {
 	log.rotateLog()
 
 	if log.getLevel() <= DEBUG {
-		log.Println(message)
+		log.Println(format, message...)
 	}
 }
 
-func Debug(message ...interface{}) {
-	std.Debug(message...)
+func Debug(format string, message ...interface{}) {
+	std.Debug(format, message...)
 }
 
-func (log *Log) Trace(message ...interface{}) {
+func (log *Log) Trace(format string, message ...interface{}) {
 	log.rotateLog()
 
 	if log.getLevel() <= TRACE {
-		log.Println(message)
+		log.Println(format, message...)
 	}
 }
 
-func Trace(message ...interface{}) {
-	std.Trace(message...)
+func Trace(format string, message ...interface{}) {
+	std.Trace(format, message...)
 }
 
-func (log *Log) Println(message ...interface{}) {
+func (log *Log) Println(format string, message ...interface{}) {
 	pidStr := fmt.Sprintf("[%d]", os.Getpid())
 
-	if firstArg, isStr := message[0].(string); isStr {
-		// Passing the empty slice for the arguments works here, so no need to check len(message)
-		internal_logger.Printf(pidStr+" "+firstArg, message[1:]...)
-	} else {
-		// Look up the stack until we get out of the logging package...
-		pc, _, _, ok := runtime.Caller(3)
-		if ok {
-			// Get the calling file's name...
-			fileName, line := runtime.FuncForPC(pc).FileLine(pc)
-			fileName = path.Base(fileName)
-
-			internal_logger.Printf(pidStr+" Unsupported argument type in first log argument, called from the line above %s:%d", fileName, line)
-		}
-	}
+	internal_logger.Printf(pidStr+" "+format, message...)
 }
 
-func Println(message ...interface{}) {
-	std.Println(message...)
+func Println(format string, message ...interface{}) {
+	std.Println(format, message...)
 }
 
 func (log *Log) Level(level int) {
