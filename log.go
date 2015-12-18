@@ -146,9 +146,9 @@ func Trace(format string, message ...interface{}) {
 }
 
 func (log *Log) Println(format string, message ...interface{}) {
-	pidStr := fmt.Sprintf("[%d]", os.Getpid())
+	outFmt := fmt.Sprintf("[%d] %s", os.Getpid(), format)
 
-	internal_logger.Printf(pidStr+" "+format, message...)
+	internal_logger.Printf(outFmt, message...)
 }
 
 func Println(format string, message ...interface{}) {
