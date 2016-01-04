@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -14,6 +15,7 @@ func TestLevel(t *testing.T) {
 		t.Error("Level not set for logger")
 	}
 }
+
 func TestPanic(t *testing.T) {
 	log := NewLogger(CRITICAL)
 
@@ -69,6 +71,48 @@ func TestSetOutput(t *testing.T) {
 	os.RemoveAll("tmp")
 }
 
+func TestErrorWithPrintf(t *testing.T) {
+	const (
+		testStr  = "test-string"
+		testStr2 = "another test string"
+		testStr3 = "test789"
+		testStr4 = "test233"
+	)
+
+	os.MkdirAll("tmp", 0777)
+	path := "./tmp/nonexistentfile.txt"
+	err := SetOutput(path)
+	defer func() {
+		CloseOutput()
+		os.Remove(path)
+	}()
+
+	Error("my output should contain '%s'", testStr)
+	Error(testStr2)
+	Error("another", testStr3, testStr4)
+
+	myData, err := ioutil.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Could not read log file '%s' for test, err='%s'", path, err)
+	}
+
+	data := string(myData)
+
+	t.Logf("data='%s'", data)
+
+	if strings.Index(data, testStr) == -1 {
+		t.Fatalf("Could not find the expected test constant '%s' in the log file, log contained '%s'", testStr, string(myData))
+	}
+
+	if strings.Index(data, testStr2) == -1 {
+		t.Fatalf("Could not find the expected test constant '%s' in the log file, log contained '%s'", testStr2, string(myData))
+	}
+
+	if strings.Index(data, testStr4) == -1 {
+		t.Fatalf("Could not find output for lists of strings '%s', log contained '%s'", testStr4, string(myData))
+	}
+}
+
 const (
 	TEST_LOG_SIZE = 10000
 )
@@ -85,7 +129,7 @@ func TestRotation(t *testing.T) {
 	SetMaxLogSize(TEST_LOG_SIZE)
 
 	for i := 0; i < 250; i++ {
-		Info("01234567890123456789012345678901234567890123456789")
+		Info(fmt.Sprintf("%03d-01234567890123456789012345678901234567890123456789", i))
 	}
 
 	//
