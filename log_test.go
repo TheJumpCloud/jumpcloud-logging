@@ -65,6 +65,10 @@ func TestSetOutput(t *testing.T) {
 		t.Error("Log didn't contain what we expected: " + logContents)
 	}
 
+	if !strings.Contains(logContents, "INFO") {
+		t.Error("Log didn't contain what we expected: " + logContents)
+	}
+
 	// Close the output file so we can remove the temp dir
 	CloseOutput()
 
