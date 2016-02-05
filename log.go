@@ -66,9 +66,10 @@ func SetMaxLogSize(logSize int64) {
 
 func (log *Log) Panic(format string, message ...interface{}) {
 	log.rotateLog()
-	log.Println(format, message...)
+	outFmt := fmt.Sprintf("[%s] %s", "PANIC", format)
+	log.Println(outFmt, message...)
 
-	panic(fmt.Sprintf(format, message...))
+	panic(fmt.Sprintf(outFmt, message...))
 }
 
 func Panic(format string, message ...interface{}) {
@@ -78,7 +79,8 @@ func Panic(format string, message ...interface{}) {
 func (log *Log) Critical(format string, message ...interface{}) {
 	log.rotateLog()
 
-	log.Println(format, message...)
+	outFmt := fmt.Sprintf("[%s] %s", "CRITICAL", format)
+	log.Println(outFmt, message...)
 }
 
 func Critical(format string, message ...interface{}) {
@@ -89,7 +91,8 @@ func (log *Log) Error(format string, message ...interface{}) {
 	log.rotateLog()
 
 	if log.level <= ERROR {
-		log.Println(format, message...)
+		outFmt := fmt.Sprintf("[%s] %s", "ERROR", format)
+		log.Println(outFmt, message...)
 	}
 }
 
@@ -101,7 +104,8 @@ func (log *Log) Warn(format string, message ...interface{}) {
 	log.rotateLog()
 
 	if log.level <= WARN {
-		log.Println(format, message...)
+		outFmt := fmt.Sprintf("[%s] %s", "WARN", format)
+		log.Println(outFmt, message...)
 	}
 }
 
@@ -113,7 +117,8 @@ func (log *Log) Info(format string, message ...interface{}) {
 	log.rotateLog()
 
 	if log.getLevel() <= INFO {
-		log.Println(format, message...)
+		outFmt := fmt.Sprintf("[%s] %s", "INFO", format)
+		log.Println(outFmt, message...)
 	}
 }
 
@@ -125,7 +130,8 @@ func (log *Log) Debug(format string, message ...interface{}) {
 	log.rotateLog()
 
 	if log.getLevel() <= DEBUG {
-		log.Println(format, message...)
+		outFmt := fmt.Sprintf("[%s] %s", "DEBUG", format)
+		log.Println(outFmt, message...)
 	}
 }
 
@@ -137,7 +143,8 @@ func (log *Log) Trace(format string, message ...interface{}) {
 	log.rotateLog()
 
 	if log.getLevel() <= TRACE {
-		log.Println(format, message...)
+		outFmt := fmt.Sprintf("[%s] %s", "TRACE", format)
+		log.Println(outFmt, message...)
 	}
 }
 
