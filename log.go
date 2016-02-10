@@ -39,7 +39,7 @@ type Log struct {
 	logFileName      string
 	logWriter        *os.File
 	mu               sync.RWMutex
-	currentLineCount int
+	currentByteCount int64
 }
 
 func NewLogger(level int) *Log {
@@ -143,12 +143,12 @@ func (log *Log) Println(format string, message ...interface{}) {
 	defer log.mu.Unlock()
 
 	outFmt := fmt.Sprintf("[%d] %s", os.Getpid(), format)
-	internal_logger.Printf(outFmt, message...)
+	outString := fmt.Sprintf(outFmt, message)
+	internal_logger.Print(outString)
 
-	log.CurrentLineCount++
+	log.currentByteCount += int64(len(outString) + 21) //Adding the date, newline.
 	if log.needsRotating() {
 		log.rotateLog()
-		log.CurrentLineCount = 1
 		internal_logger.Printf("Rotated logfile")
 	}
 }
@@ -179,11 +179,15 @@ func (log *Log) SetOutput(path string) (err error) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
 
+	//Reset the line count as appropriate
 	fileInfo, err := os.Stat(path)
-	if err != nil {
-		log.CurrentLineCount = fileInfo.Size()
+	if err != nil && fileInfo != nil {
+		log.currentByteCount = fileInfo.Size()
+	} else {
+		log.currentByteCount = 0
 	}
 
+	//Open the file
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		err = fmt.Errorf("Unable to open log file - err='%s'", err.Error())
@@ -204,11 +208,6 @@ func (log *Log) CloseOutput() (err error) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
 
-	return log.closeOutput()
-}
-
-// Not thread-safe
-func (log *Log) closeOutput() (err error) {
 	return log.logWriter.Close()
 }
 
@@ -217,21 +216,11 @@ func CloseOutput() (err error) {
 }
 
 func (log *Log) needsRotating() bool {
-	return log.logFileName != "" && log.CurrentLineCount > log.maxLogSize
+	fmt.Println(log.currentByteCount)
+	return log.logFileName != "" && log.currentByteCount > log.maxLogSize
 }
 
 func (log *Log) rotateLog() {
-	fileInfo, err := os.Stat(log.logFileName)
-	if err != nil {
-		fmt.Printf("ERROR: Could not stat log file '%s' - err='%s'\n", log.logFileName, err.Error())
-
-		// Attempt recovery to prevent filling the filesystem...
-		log.closeOutput()
-		os.Remove(log.logFileName)
-		log.setOutput(log.logFileName)
-		return
-	}
-
 	// Close our current file
 	log.logWriter.Close()
 
@@ -257,7 +246,7 @@ func (log *Log) rotateLog() {
 	if err == nil {
 		log.logWriter = file
 		internal_logger.SetOutput(file)
-		//fmt.Println("Rotated log successfully!")
+		log.currentByteCount = 0
 	} else {
 		fmt.Printf("ERROR: Unable to open log file with truncation for rotation. err='%s'\n", err.Error())
 	}
