@@ -143,13 +143,14 @@ func (log *Log) Println(format string, message ...interface{}) {
 	defer log.mu.Unlock()
 
 	outFmt := fmt.Sprintf("[%d] %s", os.Getpid(), format)
-	outString := fmt.Sprintf(outFmt, message)
+	outString := fmt.Sprintf(outFmt, message...)
 	internal_logger.Print(outString)
 
 	log.currentByteCount += int64(len(outString) + 21) //Adding the date, newline.
 	if log.needsRotating() {
 		log.rotateLog()
-		internal_logger.Printf("Rotated logfile")
+		internal_logger.Print("Log rotated")
+		log.currentByteCount += 11
 	}
 }
 
@@ -179,14 +180,6 @@ func (log *Log) SetOutput(path string) (err error) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
 
-	//Reset the line count as appropriate
-	fileInfo, err := os.Stat(path)
-	if err != nil && fileInfo != nil {
-		log.currentByteCount = fileInfo.Size()
-	} else {
-		log.currentByteCount = 0
-	}
-
 	//Open the file
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
@@ -197,6 +190,15 @@ func (log *Log) SetOutput(path string) (err error) {
 	log.logFileName = path
 	log.logWriter = file
 	internal_logger.SetOutput(file)
+
+	//Reset the line count as appropriate
+	fileInfo, err := os.Stat(path)
+	if err == nil && fileInfo != nil {
+		log.currentByteCount = fileInfo.Size()
+	} else {
+		log.currentByteCount = 0
+	}
+
 	return
 }
 
@@ -216,7 +218,6 @@ func CloseOutput() (err error) {
 }
 
 func (log *Log) needsRotating() bool {
-	fmt.Println(log.currentByteCount)
 	return log.logFileName != "" && log.currentByteCount > log.maxLogSize
 }
 
