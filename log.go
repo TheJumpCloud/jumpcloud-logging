@@ -8,8 +8,6 @@ import (
 	"sync"
 )
 
-//This is a wrapper only we can switch out loggers at will. The golang logger ecosphere is still volatile
-
 const (
 	TRACE = iota
 	DEBUG
@@ -36,11 +34,12 @@ type Logger interface {
 }
 
 type Log struct {
-	level       int
-	maxLogSize  int64
-	logFileName string
-	logWriter   *os.File
-	mu          sync.RWMutex
+	level            int
+	maxLogSize       int64
+	logFileName      string
+	logWriter        *os.File
+	mu               sync.RWMutex
+	currentLineCount int
 }
 
 func NewLogger(level int) *Log {
@@ -65,7 +64,6 @@ func SetMaxLogSize(logSize int64) {
 }
 
 func (log *Log) Panic(format string, message ...interface{}) {
-	log.rotateLog()
 	outFmt := fmt.Sprintf("[%s] %s", "PANIC", format)
 	log.Println(outFmt, message...)
 
@@ -77,8 +75,6 @@ func Panic(format string, message ...interface{}) {
 }
 
 func (log *Log) Critical(format string, message ...interface{}) {
-	log.rotateLog()
-
 	outFmt := fmt.Sprintf("[%s] %s", "CRITICAL", format)
 	log.Println(outFmt, message...)
 }
@@ -88,8 +84,6 @@ func Critical(format string, message ...interface{}) {
 }
 
 func (log *Log) Error(format string, message ...interface{}) {
-	log.rotateLog()
-
 	if log.level <= ERROR {
 		outFmt := fmt.Sprintf("[%s] %s", "ERROR", format)
 		log.Println(outFmt, message...)
@@ -101,8 +95,6 @@ func Error(format string, message ...interface{}) {
 }
 
 func (log *Log) Warn(format string, message ...interface{}) {
-	log.rotateLog()
-
 	if log.level <= WARN {
 		outFmt := fmt.Sprintf("[%s] %s", "WARN", format)
 		log.Println(outFmt, message...)
@@ -114,8 +106,6 @@ func Warn(format string, message ...interface{}) {
 }
 
 func (log *Log) Info(format string, message ...interface{}) {
-	log.rotateLog()
-
 	if log.getLevel() <= INFO {
 		outFmt := fmt.Sprintf("[%s] %s", "INFO", format)
 		log.Println(outFmt, message...)
@@ -127,8 +117,6 @@ func Info(format string, message ...interface{}) {
 }
 
 func (log *Log) Debug(format string, message ...interface{}) {
-	log.rotateLog()
-
 	if log.getLevel() <= DEBUG {
 		outFmt := fmt.Sprintf("[%s] %s", "DEBUG", format)
 		log.Println(outFmt, message...)
@@ -140,8 +128,6 @@ func Debug(format string, message ...interface{}) {
 }
 
 func (log *Log) Trace(format string, message ...interface{}) {
-	log.rotateLog()
-
 	if log.getLevel() <= TRACE {
 		outFmt := fmt.Sprintf("[%s] %s", "TRACE", format)
 		log.Println(outFmt, message...)
@@ -153,9 +139,18 @@ func Trace(format string, message ...interface{}) {
 }
 
 func (log *Log) Println(format string, message ...interface{}) {
-	outFmt := fmt.Sprintf("[%d] %s", os.Getpid(), format)
+	log.mu.Lock()
+	defer log.mu.Unlock()
 
+	outFmt := fmt.Sprintf("[%d] %s", os.Getpid(), format)
 	internal_logger.Printf(outFmt, message...)
+
+	log.CurrentLineCount++
+	if log.needsRotating() {
+		log.rotateLog()
+		log.CurrentLineCount = 1
+		internal_logger.Printf("Rotated logfile")
+	}
 }
 
 func Println(format string, message ...interface{}) {
@@ -173,7 +168,6 @@ func Level(level int) {
 	std.Level(level)
 }
 
-// thread-safe, use for accessing level in exported methods
 func (log *Log) getLevel() int {
 	log.mu.RLock()
 	defer log.mu.RUnlock()
@@ -185,11 +179,11 @@ func (log *Log) SetOutput(path string) (err error) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
 
-	return log.setOutput(path)
-}
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		log.CurrentLineCount = fileInfo.Size()
+	}
 
-// Not thread-safe
-func (log *Log) setOutput(path string) (err error) {
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		err = fmt.Errorf("Unable to open log file - err='%s'", err.Error())
@@ -222,16 +216,11 @@ func CloseOutput() (err error) {
 	return std.CloseOutput()
 }
 
+func (log *Log) needsRotating() bool {
+	return log.logFileName != "" && log.CurrentLineCount > log.maxLogSize
+}
+
 func (log *Log) rotateLog() {
-	// No need to rotate a log file that doesn't exist...
-	if log.logFileName == "" {
-		return
-	}
-
-	// Acquire mutex to rotate
-	log.mu.Lock()
-	defer log.mu.Unlock()
-
 	fileInfo, err := os.Stat(log.logFileName)
 	if err != nil {
 		fmt.Printf("ERROR: Could not stat log file '%s' - err='%s'\n", log.logFileName, err.Error())
@@ -243,36 +232,33 @@ func (log *Log) rotateLog() {
 		return
 	}
 
-	// Rotate the log file if it grows too large
-	if fileInfo.Size() > log.maxLogSize {
-		// Close our current file
-		log.logWriter.Close()
+	// Close our current file
+	log.logWriter.Close()
 
-		// Delete any existing rotated file
-		rotateName := log.logFileName + ".prev"
-		os.Remove(rotateName)
+	// Delete any existing rotated file
+	rotateName := log.logFileName + ".prev"
+	os.Remove(rotateName)
 
-		// Copy the existing file over so we can truncate in place
-		dst, err := os.OpenFile(rotateName, os.O_WRONLY|os.O_CREATE, 0600)
+	// Copy the existing file over so we can truncate in place
+	dst, err := os.OpenFile(rotateName, os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		fmt.Printf("ERROR: Could not open target file for rotation. err='%s'\n", err.Error())
+	} else {
+		src, err := os.OpenFile(log.logFileName, os.O_RDONLY, 0600)
 		if err != nil {
-			fmt.Printf("ERROR: Could not open target file for rotation. err='%s'\n", err.Error())
+			fmt.Printf("ERROR: Could not open source file for rotation. err='%s'\n", err.Error())
 		} else {
-			src, err := os.OpenFile(log.logFileName, os.O_RDONLY, 0600)
-			if err != nil {
-				fmt.Printf("ERROR: Could not open source file for rotation. err='%s'\n", err.Error())
-			} else {
-				io.Copy(dst, src)
-			}
+			io.Copy(dst, src)
 		}
+	}
 
-		// Re-open the target file with truncation
-		file, err := os.OpenFile(log.logFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
-		if err == nil {
-			log.logWriter = file
-			internal_logger.SetOutput(file)
-			//fmt.Println("Rotated log successfully!")
-		} else {
-			fmt.Printf("ERROR: Unable to open log file with truncation for rotation. err='%s'\n", err.Error())
-		}
+	// Re-open the target file with truncation
+	file, err := os.OpenFile(log.logFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err == nil {
+		log.logWriter = file
+		internal_logger.SetOutput(file)
+		//fmt.Println("Rotated log successfully!")
+	} else {
+		fmt.Printf("ERROR: Unable to open log file with truncation for rotation. err='%s'\n", err.Error())
 	}
 }
