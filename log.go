@@ -2,7 +2,6 @@ package log
 
 import (
 	"fmt"
-	"io"
 	internal_logger "log"
 	"os"
 	"sync"
@@ -150,7 +149,7 @@ func (log *Log) Println(format string, message ...interface{}) {
 	if log.needsRotating() {
 		log.rotateLog()
 		internal_logger.Print("Log rotated")
-		log.currentByteCount += 11
+		log.currentByteCount += 32
 	}
 }
 
@@ -229,18 +228,8 @@ func (log *Log) rotateLog() {
 	rotateName := log.logFileName + ".prev"
 	os.Remove(rotateName)
 
-	// Copy the existing file over so we can truncate in place
-	dst, err := os.OpenFile(rotateName, os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		fmt.Printf("ERROR: Could not open target file for rotation. err='%s'\n", err.Error())
-	} else {
-		src, err := os.OpenFile(log.logFileName, os.O_RDONLY, 0600)
-		if err != nil {
-			fmt.Printf("ERROR: Could not open source file for rotation. err='%s'\n", err.Error())
-		} else {
-			io.Copy(dst, src)
-		}
-	}
+	// Rename the exiting file
+	os.Rename(log.logFileName, rotateName)
 
 	// Re-open the target file with truncation
 	file, err := os.OpenFile(log.logFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
